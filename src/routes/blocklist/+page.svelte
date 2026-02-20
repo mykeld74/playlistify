@@ -87,6 +87,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Blocklist | Playlistify</title>
+</svelte:head>
+
 {#if !data.user}
 	<p>Log in to manage your blocklist.</p>
 	<button

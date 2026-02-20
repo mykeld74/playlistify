@@ -129,6 +129,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Dashboard | Playlistify</title>
+</svelte:head>
+
 {#if !data.user}
 	<div class="card" style="text-align: center; padding: 3rem;">
 		<h1 style="margin-top: 0;">Welcome to Playlistify</h1>

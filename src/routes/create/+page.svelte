@@ -207,6 +207,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Create Playlist | Playlistify</title>
+</svelte:head>
+
 {#if !data.user}
 	<p>Log in to create playlists.</p>
 	<button

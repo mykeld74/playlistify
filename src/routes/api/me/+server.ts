@@ -10,6 +10,7 @@ export async function GET(event) {
 	return json({
 		id: user.id,
 		userId,
+		spotifyUserId: event.locals.spotifyUserId ?? null,
 		displayName: user.name ?? null,
 		imageUrl: user.image ?? null,
 		email: user.email ?? null,
