@@ -7,6 +7,8 @@ export type GenerateInput = {
 	prompt?: string;
 	limit: number;
 	blockedArtistNames: string[];
+	/** Spotify artist IDs to exclude from results (hard filter). */
+	blockedArtistIds: string[];
 };
 
 export type TrackResult = {
@@ -28,7 +30,8 @@ export async function generatePlaylistWithAi(
 	input: GenerateInput,
 ): Promise<TrackResult[]> {
 	const anthropic = new Anthropic({ apiKey });
-	const { seedArtists, seedGenres, seedPlaylists, prompt, limit, blockedArtistNames } = input;
+	const { seedArtists, seedGenres, seedPlaylists, prompt, limit, blockedArtistNames, blockedArtistIds } = input;
+	const blockedIdSet = new Set(blockedArtistIds.filter(Boolean));
 
 	const seedParts: string[] = [];
 	if (seedArtists.length) seedParts.push(`Artists: ${seedArtists.join(', ')}`);
@@ -45,9 +48,16 @@ export async function generatePlaylistWithAi(
 			: '';
 	const userPrompt = prompt?.trim() ? `Additional direction: ${prompt}\n` : '';
 
-	const systemPrompt = `You are a music curator. Reply with only a playlist: one line per song in the exact format "Artist - Track Name". No numbering, no extra text, no explanations. Use well-known, real artists and songs that exist on Spotify.`;
+	const systemPrompt = `You are a music curator. Reply with only a playlist: one line per song in the exact format "Artist - Track Name".
+No numbering, no extra text, no explanations.
+Use well-known, real artists and songs that exist on Spotify.
+Treat the provided artists, genres, and reference playlists strictly as STYLE and VIBE references — use them to infer mood, era, tempo, and energy.
+Do NOT simply repeat the seed songs; instead, choose songs that would fit well next to them on a playlist.
+When specific seed artists are provided, heavily feature them in the playlist with multiple tracks per artist when appropriate, and then surround them with songs by other artists that clearly share a similar style.`;
 
-	const userMessage = `${seedBlock}${blockBlock}${userPrompt}Generate exactly ${limit} songs for a playlist. Reply with only the list, one "Artist - Track Name" per line.`;
+	const userMessage = `${seedBlock}${blockBlock}${userPrompt}Generate exactly ${limit} songs for a playlist that has a similar vibe, mood, and energy to the seeds.
+Include a mix of tracks by those artists and by other artists with clearly similar style.
+Reply with only the list, one "Artist - Track Name" per line.`;
 
 	const message = await anthropic.messages.create({
 		model: MODEL,
@@ -80,10 +90,11 @@ export async function generatePlaylistWithAi(
 	for (const { artist, track } of pairs) {
 		if (results.length >= limit) break;
 		const t = await searchSpotifyTrack(accessToken, artist, track);
-		if (t && !seenUris.has(t.uri)) {
-			seenUris.add(t.uri);
-			results.push(t);
-		}
+		if (!t || seenUris.has(t.uri)) continue;
+		const isBlocked = t.artistIds.some((id) => blockedIdSet.has(id));
+		if (isBlocked) continue;
+		seenUris.add(t.uri);
+		results.push(t);
 	}
 
 	return results;

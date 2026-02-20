@@ -38,6 +38,7 @@ export async function POST(event) {
 	const db = getDbFromEvent(event);
 	const blocked = await db.select().from(blockedArtists).where(eq(blockedArtists.userId, userId));
 	const blockedArtistNames = blocked.map((b) => b.name);
+	const blockedArtistIds = blocked.map((b) => b.spotifyArtistId);
 
 	try {
 		const tracks = await generatePlaylistWithAi(env.ANTHROPIC_API_KEY!, accessToken, {
@@ -47,6 +48,7 @@ export async function POST(event) {
 			prompt,
 			limit,
 			blockedArtistNames,
+			blockedArtistIds,
 		});
 		return json({ tracks });
 	} catch (e) {
