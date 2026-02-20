@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import { authClient } from '$lib/auth-client';
 
 	let { data, children } = $props();
 </script>
@@ -20,11 +21,27 @@
 			<a href="/blocklist">Blocklist</a>
 			<a href="/create">Create Playlist</a>
 			<span style="color: var(--text-muted); font-size: 0.9rem;">{data.user.displayName ?? 'User'}</span>
-			<form action="/auth/logout" method="POST" style="display: inline;">
-				<button type="submit" class="secondary" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">Log out</button>
-			</form>
+			<button
+				type="button"
+				class="secondary"
+				style="padding: 0.35rem 0.75rem; font-size: 0.85rem;"
+				onclick={async () => {
+					await authClient.signOut();
+					window.location.href = '/';
+				}}
+			>
+				Log out
+			</button>
 		{:else}
-			<a href="/auth/spotify">Log in with Spotify</a>
+			<button
+				type="button"
+				class="primary"
+				onclick={async () => {
+					await authClient.signIn.social({ provider: 'spotify', callbackURL: '/' });
+				}}
+			>
+				Log in with Spotify
+			</button>
 		{/if}
 	</div>
 </nav>

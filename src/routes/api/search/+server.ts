@@ -3,10 +3,13 @@ import { requireAuth } from '$lib/api/auth';
 
 const SPOTIFY_SEARCH = 'https://api.spotify.com/v1/search';
 
+const ALLOWED_TYPES = new Set(['artist', 'track', 'artist,track']);
+
 export async function GET(event) {
 	requireAuth(event);
 	const q = event.url.searchParams.get('q')?.trim();
-	const type = event.url.searchParams.get('type') || 'artist,track';
+	const rawType = event.url.searchParams.get('type') || 'artist,track';
+	const type = ALLOWED_TYPES.has(rawType) ? rawType : 'artist,track';
 	if (!q || q.length < 2) {
 		return json({ error: 'Query "q" required (min 2 chars)' }, { status: 400 });
 	}

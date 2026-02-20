@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { authClient } from '$lib/auth-client';
+
 	let { data } = $props();
 
 	type BlocklistItem = { id: number; name: string; spotifyArtistId: string };
@@ -70,16 +72,32 @@
 		}
 	}
 
-	function remove(id: number) {
-		fetch(`/api/blocklist/${id}`, { method: 'DELETE' }).then((res) => {
-			if (res.ok) blocklist = blocklist.filter((b) => b.id !== id);
-		});
+	async function remove(id: number) {
+		try {
+			const res = await fetch(`/api/blocklist/${id}`, { method: 'DELETE' });
+			if (res.ok) {
+				blocklist = blocklist.filter((b) => b.id !== id);
+			} else {
+				const j = await res.json().catch(() => ({}));
+				error = j.error ?? 'Failed to remove artist';
+			}
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to remove artist';
+		}
 	}
 </script>
 
 {#if !data.user}
 	<p>Log in to manage your blocklist.</p>
-	<a href="/auth/spotify"><button class="primary">Log in with Spotify</button></a>
+	<button
+				class="primary"
+				type="button"
+				onclick={async () => {
+					await authClient.signIn.social({ provider: 'spotify', callbackURL: '/blocklist' });
+				}}
+			>
+				Log in with Spotify
+			</button>
 {:else}
 	<h1 style="margin-top: 0;">Blocklist</h1>
 	<p style="color: var(--text-muted); margin-bottom: 1rem;">

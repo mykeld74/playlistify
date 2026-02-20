@@ -1,24 +1,23 @@
 import { json } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
-import { requireAuth, getDbFromEvent } from '$lib/api/auth';
-import { users } from '$lib/db/schema';
+import { requireAuth } from '$lib/api/auth';
 
 export async function POST(event) {
-	const { userId, accessToken } = requireAuth(event);
-	const db = getDbFromEvent(event);
-	const body = await event.request.json().catch(() => ({})) as { name?: string; trackUris?: string[] };
-	const name = (body.name ?? 'New Playlist').trim();
-	const trackUris = Array.isArray(body.trackUris) ? body.trackUris.filter((u) => typeof u === 'string') : [];
-
-	const userList = await db.select().from(users).where(eq(users.id, userId));
-	const user = userList[0] ?? null;
-	if (!user?.spotifyId) {
+	const { accessToken } = requireAuth(event);
+	const spotifyUserId = event.locals.spotifyUserId;
+	if (!spotifyUserId) {
 		return json({ error: 'User Spotify ID not found' }, { status: 400 });
 	}
 
+	const body = await event.request.json().catch(() => ({})) as { name?: string; trackUris?: string[] };
+	const name = (body.name ?? 'New Playlist').trim().slice(0, 100);
+	const SPOTIFY_TRACK_URI = /^spotify:track:[A-Za-z0-9]+$/;
+	const trackUris = Array.isArray(body.trackUris)
+		? body.trackUris.filter((u) => typeof u === 'string' && SPOTIFY_TRACK_URI.test(u)).slice(0, 200)
+		: [];
+
 	// Create playlist
 	const createRes = await fetch(
-		`https://api.spotify.com/v1/users/${user.spotifyId}/playlists`,
+		`https://api.spotify.com/v1/users/${spotifyUserId}/playlists`,
 		{
 			method: 'POST',
 			headers: {
@@ -34,25 +33,28 @@ export async function POST(event) {
 	}
 	const playlist = (await createRes.json()) as { id: string; external_urls?: { spotify?: string } };
 
-	// Add tracks in batches of 100 (Spotify limit)
+	// Add tracks in batches of 100 (Spotify limit) — batches run concurrently
 	if (trackUris.length > 0) {
+		const batches: string[][] = [];
 		for (let i = 0; i < trackUris.length; i += 100) {
-			const batch = trackUris.slice(i, i + 100);
-			const addRes = await fetch(
-				`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`,
-				{
+			batches.push(trackUris.slice(i, i + 100));
+		}
+		const batchResults = await Promise.all(
+			batches.map((batch) =>
+				fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
 					method: 'POST',
 					headers: {
 						Authorization: `Bearer ${accessToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ uris: batch }),
-				},
-			);
-			if (!addRes.ok) {
-				const text = await addRes.text();
-				return json({ error: 'Playlist created but adding tracks failed: ' + text }, { status: addRes.status });
-			}
+				}),
+			),
+		);
+		const failed = batchResults.find((r) => !r.ok);
+		if (failed) {
+			const text = await failed.text();
+			return json({ error: 'Playlist created but adding tracks failed: ' + text }, { status: failed.status });
 		}
 	}
 

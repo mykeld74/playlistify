@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { authClient } from '$lib/auth-client';
 
 	let { data } = $props();
 
@@ -11,19 +12,7 @@
 		description?: string;
 	};
 
-	type RecentItem = {
-		track?: {
-			name: string;
-			id: string;
-			artists?: { name: string }[];
-			album?: { name: string };
-			external_urls?: { spotify?: string };
-		};
-		played_at: string;
-	};
-
 	let playlists = $state<PlaylistItem[]>([]);
-	let recent = $state<RecentItem[]>([]);
 	let loading = $state(true);
 	let fetchError = $state<string | null>(null);
 	let actionError = $state<string | null>(null);
@@ -38,12 +27,9 @@
 		loading = true;
 		fetchError = null;
 		try {
-			const [pRes, rRes] = await Promise.all([
-				fetch('/api/playlists'),
-				fetch('/api/recent'),
-			]);
-			playlists = pRes.ok ? ((await pRes.json()) as { items?: PlaylistItem[] }).items ?? [] : [];
-			recent = rRes.ok ? ((await rRes.json()) as { items?: RecentItem[] }).items ?? [] : [];
+			const pRes = await fetch('/api/playlists', { cache: 'no-store' });
+			const pData = pRes.ok ? (await pRes.json()) : null;
+			playlists = (pData?.items ?? []) as PlaylistItem[];
 		} catch (e) {
 			fetchError = e instanceof Error ? e.message : 'Failed to load';
 		} finally {
@@ -147,15 +133,21 @@
 	<div class="card" style="text-align: center; padding: 3rem;">
 		<h1 style="margin-top: 0;">Welcome to Playlistify</h1>
 		<p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-			Connect Spotify to view your playlists, explore history, and create AI-powered playlists with a blocklist.
+			Connect Spotify to view your playlists and create AI-powered playlists with a blocklist.
 		</p>
-		<a href="/auth/spotify">
-			<button class="primary">Log in with Spotify</button>
-		</a>
+		<button
+			class="primary"
+			type="button"
+			onclick={async () => {
+				await authClient.signIn.social({ provider: 'spotify', callbackURL: '/' });
+			}}
+		>
+			Log in with Spotify
+		</button>
 		{#if data.error}
 			<p style="color: var(--danger); margin-top: 1rem;">Error: {data.error}</p>
 			{#if data.error === 'token_exchange_failed'}
-				<p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Check that the redirect URI in your Spotify app matches exactly (e.g. <code>http://127.0.0.1:5173/auth/spotify/callback</code>), no trailing slash. Use 127.0.0.1, not localhost.</p>
+				<p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Check that the redirect URI in your Spotify app matches exactly (e.g. <code>http://127.0.0.1:5173/api/auth/callback/spotify</code>), no trailing slash. Use 127.0.0.1, not localhost.</p>
 			{:else if data.error === 'db_setup'}
 				<p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Database tables are missing. Set <code>DATABASE_URL</code> in .env (Neon connection string), then run:</p>
 				<pre style="background: var(--surface); padding: 0.75rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem;">pnpm db:migrate</pre>
@@ -218,24 +210,6 @@
 				</div>
 			{:else}
 				<p style="color: var(--text-muted);">No playlists yet.</p>
-			{/if}
-		</section>
-		<section>
-			<h2 style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0.75rem;">Recently Played</h2>
-			{#if recent.length}
-				<div class="recent-grid">
-					{#each recent as item (item.played_at)}
-						{@const track = item.track}
-						{#if track}
-							<a href={track.external_urls?.spotify ?? '#'} target="_blank" rel="noopener noreferrer" class="recent-card">
-								<span class="recent-title">{track.name}</span>
-								<span class="recent-meta">{track.artists?.map((a) => a.name).join(', ')} · {track.album?.name ?? ''}</span>
-							</a>
-						{/if}
-					{/each}
-				</div>
-			{:else}
-				<p style="color: var(--text-muted);">No recent plays.</p>
 			{/if}
 		</section>
 	{/if}

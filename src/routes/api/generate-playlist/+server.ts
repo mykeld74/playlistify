@@ -22,10 +22,18 @@ export async function POST(event) {
 		prompt?: string;
 		limit?: number;
 	};
-	const seedArtists = Array.isArray(body.seedArtists) ? body.seedArtists.map((s) => String(s).trim()).filter(Boolean) : [];
-	const seedGenres = Array.isArray(body.seedGenres) ? body.seedGenres.map((s) => String(s).trim()).filter(Boolean) : [];
-	const seedPlaylists = Array.isArray(body.seedPlaylists) ? body.seedPlaylists : [];
-	const prompt = typeof body.prompt === 'string' ? body.prompt : undefined;
+	const MAX_SEED_STRING = 200;
+	const seedArtists = Array.isArray(body.seedArtists)
+		? body.seedArtists.map((s) => String(s).trim()).filter(Boolean).slice(0, 10).map((s) => s.slice(0, MAX_SEED_STRING))
+		: [];
+	const seedGenres = Array.isArray(body.seedGenres)
+		? body.seedGenres.map((s) => String(s).trim()).filter(Boolean).slice(0, 10).map((s) => s.slice(0, MAX_SEED_STRING))
+		: [];
+	const rawPlaylists = Array.isArray(body.seedPlaylists) ? body.seedPlaylists.slice(0, 10) : [];
+	const seedPlaylists = rawPlaylists
+		.filter((p) => p && typeof p.name === 'string' && typeof p.trackSummary === 'string')
+		.map((p) => ({ name: String(p.name).slice(0, MAX_SEED_STRING), trackSummary: String(p.trackSummary).slice(0, 2000) }));
+	const prompt = typeof body.prompt === 'string' ? body.prompt.slice(0, 500) : undefined;
 	const limit = Math.min(Math.max(Number(body.limit) || 20, 1), 200);
 
 	if (seedArtists.length === 0 && seedGenres.length === 0 && seedPlaylists.length === 0 && !prompt?.trim()) {

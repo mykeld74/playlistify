@@ -8,6 +8,48 @@
       "when": 1771529022326,
       "tag": "0000_broken_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771600581932,
+      "tag": "0001_narrow_maverick",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1738000000000,
+      "tag": "0002_verification_created_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1738000001000,
+      "tag": "0003_verification_updated_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1738000002000,
+      "tag": "0004_account_access_token_expires_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1738000003000,
+      "tag": "0005_account_refresh_token_expires_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771605805230,
+      "tag": "0006_outstanding_blackheart",
+      "breakpoints": true
     }
   ]
 }

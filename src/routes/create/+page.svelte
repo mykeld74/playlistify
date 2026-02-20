@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { authClient } from '$lib/auth-client';
+
 	let { data } = $props();
 
 	type TrackItem = {
@@ -207,7 +209,15 @@
 
 {#if !data.user}
 	<p>Log in to create playlists.</p>
-	<a href="/auth/spotify"><button class="primary">Log in with Spotify</button></a>
+	<button
+				class="primary"
+				type="button"
+				onclick={async () => {
+					await authClient.signIn.social({ provider: 'spotify', callbackURL: '/create' });
+				}}
+			>
+				Log in with Spotify
+			</button>
 {:else}
 	<h1 style="margin-top: 0;">Create Playlist</h1>
 

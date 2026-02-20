@@ -2,15 +2,15 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { getDb } from '$lib/db';
 
 export function requireAuth(event: RequestEvent): { userId: string; accessToken: string } {
-	const userId = event.locals.userId;
+	const user = event.locals.user;
 	const accessToken = event.locals.accessToken;
-	if (!userId || !accessToken) {
+	if (!user?.id || !accessToken) {
 		throw new Response(JSON.stringify({ error: 'Unauthorized' }), {
 			status: 401,
 			headers: { 'Content-Type': 'application/json' },
 		});
 	}
-	return { userId, accessToken };
+	return { userId: user.id, accessToken };
 }
 
 export function getDbFromEvent(_event: RequestEvent) {

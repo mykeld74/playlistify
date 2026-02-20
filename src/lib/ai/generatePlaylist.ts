@@ -84,15 +84,18 @@ Reply with only the list, one "Artist - Track Name" per line.`;
 		}
 	}
 
+	// Search all pairs concurrently, then filter in order
+	const searched = await Promise.all(
+		pairs.map(({ artist, track }) => searchSpotifyTrack(accessToken, artist, track)),
+	);
+
 	const results: TrackResult[] = [];
 	const seenUris = new Set<string>();
 
-	for (const { artist, track } of pairs) {
+	for (const t of searched) {
 		if (results.length >= limit) break;
-		const t = await searchSpotifyTrack(accessToken, artist, track);
 		if (!t || seenUris.has(t.uri)) continue;
-		const isBlocked = t.artistIds.some((id) => blockedIdSet.has(id));
-		if (isBlocked) continue;
+		if (t.artistIds.some((id) => blockedIdSet.has(id))) continue;
 		seenUris.add(t.uri);
 		results.push(t);
 	}
