@@ -19,7 +19,8 @@ export type TrackResult = {
 	album?: string;
 };
 
-const MODEL = 'claude-sonnet-4-6';
+// Use a fast model in production to avoid serverless timeouts
+const MODEL = 'claude-3-haiku-20240307';
 
 /**
  * Ask Claude for a list of "Artist - Track" lines, then resolve each to a Spotify track.
@@ -61,7 +62,9 @@ Reply with only the list, one "Artist - Track Name" per line.`;
 
 	const message = await anthropic.messages.create({
 		model: MODEL,
-		max_tokens: 4096,
+		// Keep the response concise so the call stays well under
+		// typical serverless time limits on hosts like Netlify.
+		max_tokens: 1200,
 		system: systemPrompt,
 		messages: [{ role: 'user', content: userMessage }],
 	});
