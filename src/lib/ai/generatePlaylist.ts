@@ -19,8 +19,8 @@ export type TrackResult = {
 	album?: string;
 };
 
-// Use a fast model in production to avoid serverless timeouts
-const MODEL = 'claude-3-haiku-20240307';
+// Higher‑quality model (slower than Haiku, but better playlists)
+const MODEL = 'claude-sonnet-4-6';
 
 /**
  * Ask Claude for a list of "Artist - Track" lines, then resolve each to a Spotify track.
@@ -56,15 +56,20 @@ Treat the provided artists, genres, and reference playlists strictly as STYLE an
 Do NOT simply repeat the seed songs; instead, choose songs that would fit well next to them on a playlist.
 When specific seed artists are provided, heavily feature them in the playlist with multiple tracks per artist when appropriate, and then surround them with songs by other artists that clearly share a similar style.`;
 
-	const userMessage = `${seedBlock}${blockBlock}${userPrompt}Generate exactly ${limit} songs for a playlist that has a similar vibe, mood, and energy to the seeds.
+	// Ask the model for more than we strictly need so that after
+	// filtering (Spotify search misses, blocked artists, duplicates)
+	// we still have a good chance of reaching the requested limit.
+	const requestedCount = Math.min(limit + 50, 250);
+
+	const userMessage = `${seedBlock}${blockBlock}${userPrompt}Generate at least ${limit} and up to ${requestedCount} songs for a playlist that has a similar vibe, mood, and energy to the seeds.
 Include a mix of tracks by those artists and by other artists with clearly similar style.
 Reply with only the list, one "Artist - Track Name" per line.`;
 
 	const message = await anthropic.messages.create({
 		model: MODEL,
-		// Keep the response concise so the call stays well under
-		// typical serverless time limits on hosts like Netlify.
-		max_tokens: 1200,
+		// Allow enough tokens for ~200 short lines while still
+		// keeping the call within typical serverless limits.
+		max_tokens: 2200,
 		system: systemPrompt,
 		messages: [{ role: 'user', content: userMessage }],
 	});
